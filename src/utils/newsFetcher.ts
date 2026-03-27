@@ -48,7 +48,7 @@ export const ALL_GENRES: NewsGenre[] = ['top', 'domestic', 'world', 'business', 
  */
 const getProxyUrl = (path: string): string => {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const isExtension = typeof chrome !== 'undefined' && !!chrome.runtime && !!chrome.runtime.id;
+    const isExtension = typeof (window as any).chrome !== 'undefined' && !!(window as any).chrome.runtime && !!(window as any).chrome.runtime.id;
     const fullUrl = `https://news.yahoo.co.jp/rss/${path}`;
 
     if (isLocalhost) {
