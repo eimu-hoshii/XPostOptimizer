@@ -5,4 +5,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './', // 相対パスにすることでリポジトリ名に左右されず動作するようにします
+  server: {
+    proxy: {
+      '/yahoo-rss': {
+        target: 'https://news.yahoo.co.jp/rss',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/yahoo-rss/, '')
+      }
+    }
+  }
 })
