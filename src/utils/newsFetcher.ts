@@ -12,24 +12,36 @@ export interface NewsItem {
 }
 
 /** ニュースジャンルの型定義 */
-export type NewsGenre = 'ai' | 'game' | 'society';
+export type NewsGenre = 'top' | 'domestic' | 'world' | 'business' | 'entertainment' | 'sports' | 'it' | 'science' | 'local';
 
 /** ジャンル表示名のマッピング */
 export const GENRE_LABELS: Record<NewsGenre, string> = {
-    ai: '🤖 AI・テクノロジー',
-    game: '🎮 ゲーム',
-    society: '🌍 IT・社会',
+    top: '📍 主要',
+    domestic: '🇯🇵 国内',
+    world: '🌎 国際',
+    business: '📈 経済',
+    entertainment: '🎬 エンタメ',
+    sports: '⚽ スポーツ',
+    it: '💻 IT',
+    science: '🧪 科学',
+    local: '🏘️ 地域',
 };
 
-/** ジャンルごとのRSSフィードURL */
+/** ジャンルごとのRSSフィードURL (Yahoo!ニュース トピックス) */
 const GENRE_RSS_URLS: Record<NewsGenre, string> = {
-    ai: 'https://rss.itmedia.co.jp/rss/2.0/aiplus.xml',       // ITmedia AI+
-    game: 'https://www.4gamer.net/rss/index.xml',            // 4Gamer.net
-    society: 'https://gigazine.net/news/rss_2.0/'            // GIGAZINE
+    top: 'https://news.yahoo.co.jp/rss/topics/top-picks.xml',
+    domestic: 'https://news.yahoo.co.jp/rss/topics/domestic.xml',
+    world: 'https://news.yahoo.co.jp/rss/topics/world.xml',
+    business: 'https://news.yahoo.co.jp/rss/topics/business.xml',
+    entertainment: 'https://news.yahoo.co.jp/rss/topics/entertainment.xml',
+    sports: 'https://news.yahoo.co.jp/rss/topics/sports.xml',
+    it: 'https://news.yahoo.co.jp/rss/topics/it.xml',
+    science: 'https://news.yahoo.co.jp/rss/topics/science.xml',
+    local: 'https://news.yahoo.co.jp/rss/topics/local.xml',
 };
 
 /** すべてのジャンルを配列で取得 */
-export const ALL_GENRES: NewsGenre[] = ['ai', 'game', 'society'];
+export const ALL_GENRES: NewsGenre[] = ['top', 'domestic', 'world', 'business', 'entertainment', 'sports', 'it', 'science', 'local'];
 
 /**
  * RSS to JSON サービスを使用してニュースを取得する
@@ -76,11 +88,10 @@ export const fetchAllGenreNews = async (count: number = 5): Promise<Record<NewsG
         }))
     );
 
-    const newsMap: Record<NewsGenre, NewsItem[]> = {
-        ai: [],
-        game: [],
-        society: [],
-    };
+    const newsMap: Record<NewsGenre, NewsItem[]> = {} as Record<NewsGenre, NewsItem[]>;
+    ALL_GENRES.forEach(genre => {
+        newsMap[genre] = [];
+    });
 
     for (const result of results) {
         if (result.status === 'fulfilled') {

@@ -24,7 +24,7 @@ export const PostGenerator = ({ rules }: Props) => {
 
     // ニューススクリーニング用のstate
     const [newsMap, setNewsMap] = useState<Record<NewsGenre, NewsItem[]> | null>(null);
-    const [activeGenre, setActiveGenre] = useState<NewsGenre>('ai');
+    const [activeGenre, setActiveGenre] = useState<NewsGenre>('top');
     const [newsLoading, setNewsLoading] = useState(false);
     const [newsError, setNewsError] = useState('');
     const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
