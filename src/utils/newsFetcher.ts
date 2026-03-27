@@ -1,6 +1,6 @@
 /**
  * ニュース取得ユーティリティ
- * Yahoo! ニュース等の制限を回避しつつ、安定したジャンル別ニュースを取得する
+ * Yahoo! ニュース RSS を直接取得・パースする (alloriginsプロキシを使用)
  */
 
 /** ニュース記事の型定義 */
@@ -27,34 +27,30 @@ export const GENRE_LABELS: Record<NewsGenre, string> = {
     local: '🏘️ 地域',
 };
 
-/** 
- * ジャンルごとの検索クエリ (Google ニュース経由)
- * Yahoo! ニュースの直接RSSがプロキシで遮断されているため、Google ニュースの検索機能をプロキシとして利用
- */
-const GENRE_QUERIES: Record<NewsGenre, string> = {
-    top: '主要 ニュース',
-    domestic: '日本 国内 ニュース',
-    world: '国際 海外 ニュース',
-    business: '経済 ビジネス ニュース',
-    entertainment: 'エンタメ 芸能 ニュース',
-    sports: 'スポーツ ニュース',
-    it: 'IT テクノロジー',
-    science: '科学 サイエンス',
-    local: '地域 地方 ニュース',
+/** ジャンルごとのRSSフィードURL (Yahoo!ニュース トピックス) */
+const GENRE_RSS_URLS: Record<NewsGenre, string> = {
+    top: 'https://news.yahoo.co.jp/rss/topics/top-picks.xml',
+    domestic: 'https://news.yahoo.co.jp/rss/topics/domestic.xml',
+    world: 'https://news.yahoo.co.jp/rss/topics/world.xml',
+    business: 'https://news.yahoo.co.jp/rss/topics/business.xml',
+    entertainment: 'https://news.yahoo.co.jp/rss/topics/entertainment.xml',
+    sports: 'https://news.yahoo.co.jp/rss/topics/sports.xml',
+    it: 'https://news.yahoo.co.jp/rss/topics/it.xml',
+    science: 'https://news.yahoo.co.jp/rss/topics/science.xml',
+    local: 'https://news.yahoo.co.jp/rss/topics/local.xml',
 };
 
 /** すべてのジャンルを配列で取得 */
 export const ALL_GENRES: NewsGenre[] = ['top', 'domestic', 'world', 'business', 'entertainment', 'sports', 'it', 'science', 'local'];
 
 /**
- * RSS to JSON サービスを使用してニュースを取得する
- * (Google ニュース検索 RSS を使用することで高い安定性とCORS回避を実現)
+ * Yahoo! ニュース RSS を取得する
  */
 export const fetchNewsByGenre = async (genre: NewsGenre, count: number = 5): Promise<NewsItem[]> => {
-    const query = encodeURIComponent(GENRE_QUERIES[genre]);
-    // Google ニュース検索 RSS を使用 (rss2json サービス経由で取得)
-    const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=ja&gl=JP&ceid=JP:ja`;
-    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+    const rssUrl = GENRE_RSS_URLS[genre];
+    // allorigins プロキシを使用して CORS と地理的制限を回避
+    // (Yahoo! ニュースの海外ブロックを回避するため JSON エンコード形式で取得)
+    const apiUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`;
 
     try {
         const response = await fetch(apiUrl);
@@ -63,28 +59,47 @@ export const fetchNewsByGenre = async (genre: NewsGenre, count: number = 5): Pro
         }
 
         const data = await response.json();
-        if (data.status !== 'ok') {
-            throw new Error(`APIエラー: ${data.message}`);
+        const xmlText = data.contents;
+        
+        if (!xmlText) {
+            throw new Error('RSSの内容が空です');
         }
 
-        return data.items.slice(0, count).map((item: any) => {
-            // タイトルからソース名を抽出 (例: "記事タイトル - 共同通信" -> 共同通信)
-            const title = item.title;
-            const sourceSeparatorIndex = title.lastIndexOf(' - ');
-            const cleanTitle = sourceSeparatorIndex > 0 ? title.substring(0, sourceSeparatorIndex) : title;
-            const source = sourceSeparatorIndex > 0 ? title.substring(sourceSeparatorIndex + 3) : 'ニュース';
-
-            return {
-                title: cleanTitle,
-                link: item.link,
-                source: source,
-                pubDate: formatDate(item.pubDate),
-            };
-        });
+        return parseRssXml(xmlText, count);
     } catch (error) {
         console.error(`ニュース取得エラー (${genre}):`, error);
         return [];
     }
+};
+
+/**
+ * RSS XMLをパースしてニュース記事を抽出する
+ */
+const parseRssXml = (xmlText: string, count: number): NewsItem[] => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'text/xml');
+    const items = doc.querySelectorAll('item');
+    const newsItems: NewsItem[] = [];
+
+    for (let i = 0; i < Math.min(items.length, count); i++) {
+        const item = items[i];
+        const title = item.querySelector('title')?.textContent || '';
+        const link = item.querySelector('link')?.textContent || '';
+        const pubDate = item.querySelector('pubDate')?.textContent || '';
+
+        // Yahoo! ニュース RSS はタイトルにサイト名が含まれないことが多いためソース名を固定または推測
+        // 必要に応じて title の形式をチェック
+        const source = 'Yahoo!ニュース';
+
+        newsItems.push({
+            title,
+            link,
+            source,
+            pubDate: formatDate(pubDate),
+        });
+    }
+
+    return newsItems;
 };
 
 /**
@@ -99,9 +114,7 @@ export const fetchAllGenreNews = async (count: number = 5): Promise<Record<NewsG
     );
 
     const newsMap: Record<NewsGenre, NewsItem[]> = {} as Record<NewsGenre, NewsItem[]>;
-    ALL_GENRES.forEach(genre => {
-        newsMap[genre] = [];
-    });
+    ALL_GENRES.forEach(genre => { newsMap[genre] = []; });
 
     for (const result of results) {
         if (result.status === 'fulfilled') {
