@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "X Post Optimizer",
+  "version": "1.0.0",
+  "description": "X (Twitter) 向けのポスト自動生成・最適化ツール",
+  "action": {
+    "default_title": "X Post Optimizer"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "permissions": [
+    "sidePanel"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://*.yahoo.co.jp/*"
+  ]
+}
